@@ -3,97 +3,113 @@ import os
 from datetime import datetime
 
 
-# Функция для загрузки заметок из файла JSON, если файл существует
-def load_notes():
-    if os.path.exists('notes.json'):
-        with open('notes.json', 'r', encoding="UTF-8") as file:
-            return json.load(file)
-    else:
-        return {}
+class NoteModel:
+    def __init__(self, file_name='notes.json'):
+        self.file_name = file_name
+        self.notes = self.load_notes()
+
+    def load_notes(self):
+        if os.path.exists(self.file_name):
+            with open(self.file_name, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        else:
+            return {}
+
+    def save_notes(self):
+        with open(self.file_name, 'w', encoding='utf-8') as file:
+            json.dump(self.notes, file, ensure_ascii=False, indent=4)
+
+    def add_note(self, note_id, title, body):
+        if note_id in self.notes:
+            return False, "Заметка с таким идентификатором уже существует."
+
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.notes[note_id] = {
+            "title": title,
+            "body": body,
+            "created_at": current_time,
+            "last_updated_at": current_time
+        }
+        self.save_notes()
+        return True, "Заметка успешно добавлена."
+
+    def edit_note(self, note_id, new_title, new_body):
+        if note_id not in self.notes:
+            return False, "Заметка с таким идентификатором не существует."
+
+        if new_title:
+            self.notes[note_id]['title'] = new_title
+        if new_body:
+            self.notes[note_id]['body'] = new_body
+
+        self.notes[note_id]['last_updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.save_notes()
+        return True, "Заметка успешно отредактирована."
+
+    def delete_note(self, note_id):
+        if note_id not in self.notes:
+            return False, "Заметка с таким идентификатором не существует."
+
+        del self.notes[note_id]
+        self.save_notes()
+        return True, "Заметка успешно удалена."
 
 
-# Функция для сохранения заметок в файл JSON
-def save_notes(notes):
-    with open('notes.json', 'w') as file:
-        json.dump(notes, file, ensure_ascii=False, indent=4)
+class NoteView:
+    @staticmethod
+    def display_notes(notes):
+        if not notes:
+            print("Нет доступных заметок.")
+            return
+
+        print("Список заметок:")
+        for note_id, note_info in notes.items():
+            print(f"Идентификатор: {note_id}")
+            print(f"Заголовок: {note_info['title']}")
+            print(f"Дата создания: {note_info['created_at']}")
+            print(f"Дата последнего изменения: {note_info['last_updated_at']}")
+            print("=" * 20)
 
 
-# Функция для добавления новой заметки
-def add_note(notes):
-    note_id = input("Введите идентификатор заметки: ")
-    if note_id in notes:
-        print("Заметка с таким идентификатором уже существует.")
-        return
+class NoteController:
+    def __init__(self):
+        self.model = NoteModel()
+        self.view = NoteView()
 
-    title = input("Введите заголовок заметки: ")
-    body = input("Введите текст заметки: ")
+    def display_notes(self):
+        self.view.display_notes(self.model.notes)
 
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    notes[note_id] = {
-        "title": title,
-        "body": body,
-        "created_at": current_time,
-        "last_updated_at": current_time
-    }
-    save_notes(notes)
-    print("Заметка успешно добавлена.")
+    def add_note(self):
+        note_id = input("Введите идентификатор заметки: ")
+        title = input("Введите заголовок заметки: ")
+        body = input("Введите текст заметки: ")
+        success, message = self.model.add_note(note_id, title, body)
+        if success:
+            print(message)
+        else:
+            print(f"Ошибка: {message}")
 
+    def edit_note(self):
+        note_id = input("Введите идентификатор заметки для редактирования: ")
+        new_title = input("Введите новый заголовок (оставьте пустым, чтобы оставить прежний): ")
+        new_body = input("Введите новый текст заметки (оставьте пустым, чтобы оставить прежний): ")
+        success, message = self.model.edit_note(note_id, new_title, new_body)
+        if success:
+            print(message)
+        else:
+            print(f"Ошибка: {message}")
 
-# Функция для отображения всех заметок
-def display_notes(notes):
-    if not notes:
-        print("Нет доступных заметок.")
-        return
-
-    print("Список заметок:")
-    for note_id, note_info in notes.items():
-        print(f"Идентификатор: {note_id}")
-        print(f"Заголовок: {note_info['title']}")
-        print(f"Дата создания: {note_info['created_at']}")
-        print(f"Дата последнего изменения: {note_info['last_updated_at']}")
-        print("=" * 20)
-
-
-# Функция для редактирования заметки
-def edit_note(notes):
-    note_id = input("Введите идентификатор заметки для редактирования: ")
-    if note_id not in notes:
-        print("Заметка с таким идентификатором не существует.")
-        return
-
-    print("Текущая информация о заметке:")
-    print(f"Идентификатор: {note_id}")
-    print(f"Заголовок: {notes[note_id]['title']}")
-    print(f"Текст заметки: {notes[note_id]['body']}")
-    print("=" * 20)
-
-    new_title = input("Введите новый заголовок (оставьте пустым, чтобы оставить прежний): ")
-    new_body = input("Введите новый текст заметки (оставьте пустым, чтобы оставить прежний): ")
-
-    if new_title:
-        notes[note_id]['title'] = new_title
-    if new_body:
-        notes[note_id]['body'] = new_body
-
-    notes[note_id]['last_updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    save_notes(notes)
-    print("Заметка успешно отредактирована.")
-
-
-# Функция для удаления заметки
-def delete_note(notes):
-    note_id = input("Введите идентификатор заметки для удаления: ")
-    if note_id not in notes:
-        print("Заметка с таким идентификатором не существует.")
-        return
-
-    del notes[note_id]
-    save_notes(notes)
-    print("Заметка успешно удалена.")
+    def delete_note(self):
+        note_id = input("Введите идентификатор заметки для удаления: ")
+        success, message = self.model.delete_note(note_id)
+        if success:
+            print(message)
+        else:
+            print(f"Ошибка: {message}")
 
 
 def main():
-    notes = load_notes()
+    controller = NoteController()
 
     while True:
         print("\n===== Меню =====")
@@ -106,13 +122,13 @@ def main():
         choice = input("Выберите действие: ")
 
         if choice == '1':
-            display_notes(notes)
+            controller.display_notes()
         elif choice == '2':
-            add_note(notes)
+            controller.add_note()
         elif choice == '3':
-            edit_note(notes)
+            controller.edit_note()
         elif choice == '4':
-            delete_note(notes)
+            controller.delete_note()
         elif choice == '5':
             print("Выход из программы.")
             break
